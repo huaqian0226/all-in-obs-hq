@@ -1,6 +1,6 @@
 {
   "name": "multi-source-content-importer",
-  "version": "0.1.10",
+  "version": "0.1.10-hq.1",
   "description": "Import content from WeChat and Xiaohongshu with metadata and media.",
   "main": "main.js",
   "scripts": {
