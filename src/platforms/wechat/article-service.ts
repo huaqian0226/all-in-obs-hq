@@ -171,7 +171,7 @@ export class WechatArticleService {
 		return markdown;
 	}
 
-	buildFrontmatter(article: WechatArticleData, category: string, cover: string): string {
+	buildFrontmatter(article: WechatArticleData, category: string): string {
 		const importedAt = this.formatDateTime(new Date());
 		const publishedTs = article.publishedTs > 0 ? String(article.publishedTs) : "0";
 
@@ -189,7 +189,6 @@ export class WechatArticleService {
 			`imported_at: ${this.toYamlString(importedAt)}`,
 			`category: ${this.toYamlString(category)}`,
 			`description: ${this.toYamlString(article.description)}`,
-			`cover: ${this.toYamlString(cover)}`,
 			`type: ${this.toYamlString(article.type)}`,
 			"---",
 		];

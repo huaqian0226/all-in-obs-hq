@@ -46,12 +46,16 @@
 插件模式下，默认输出为：
 
 - 笔记：`<defaultFolder>/<category>/<title>.md`
-- 媒体：`<defaultFolder>/media/<title>/...`
+- 媒体：`<defaultFolder>/<category>/images/<md5>_MD5.<ext>`
 
 如果选择“自定义文件夹”：
 
 - 笔记：`<customFolder>/<title>.md`
-- 媒体：`<customFolder>/media/<title>/...`
+- 媒体：`<customFolder>/images/<md5>_MD5.<ext>`
+
+媒体文件统一保存在笔记所在文件夹的 `images/` 子目录中，文件名为内容 MD5 签名
+（与 [obsidian-local-images-plus](https://github.com/Sergei-Korneev/obsidian-local-images-plus)
+的 `<md5>_MD5` 命名算法完全一致），相同图片自动去重。
 
 ### 设置项说明
 
@@ -77,7 +81,6 @@
 - `imported_at`
 - `category`
 - `description`
-- `cover`
 - `type`
 
 小红书笔记会写入这些基础字段：
@@ -87,7 +90,6 @@
 - `source`
 - `category`
 - `imported_at`
-- `cover`
 - `type`
 
 ### 当前限制
@@ -300,6 +302,18 @@ npx tsc --noEmit
 6. 在 Release 上传 `main.js`、`manifest.json`、`styles.css`
 
 ## Changelog
+
+### 0.1.10-hq.1（fork 定制）
+
+本 fork（`my-features` 分支）在上游 0.1.10 基础上定制笔记输出格式：
+
+- 图片改存到笔记所在文件夹的 `images/` 子目录，按内容 MD5 签名命名（`<md5>_MD5.<ext>`，
+  与 obsidian-local-images-plus 算法一致），相同图片自动去重
+- frontmatter 移除 `cover` 字段（微信与小红书均生效）
+- 小红书笔记版式调整：封面 `![404](...)` 与其余图片 `![400](...)` 连续排列、紧跟标题，
+  之后是正文，最后一行是标签（alt 文本即 Obsidian 显示宽度）
+- 清理小红书标签及正文中的 `[话题]` 后缀，输出纯净标签（如 `#AI工具`）
+- 注意：`skills/` 下的 agent 脚本仍为上游输出格式，尚未同步本定制
 
 ### 0.1.10
 

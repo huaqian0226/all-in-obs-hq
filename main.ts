@@ -16,8 +16,15 @@ import { WechatArticleService } from "./src/platforms/wechat/article-service";
 import { buildWechatHeaders } from "./src/platforms/wechat/headers";
 import { WECHAT_SMOKE_CASES } from "./src/platforms/wechat/smoke-cases";
 import { PlatformDebugLogger } from "./src/shared/platform-debug-logger";
+import { mediaMd5Signature } from "./src/shared/media-hash";
 
 type SupportedPlatform = "wechat" | "xiaohongshu";
+
+// Media files live in an "images" subfolder next to the note itself.
+const MEDIA_SUBFOLDER = "images";
+// Alt texts double as display widths in Obsidian (![<width>](...)).
+const COVER_IMAGE_ALT = "404";
+const GALLERY_IMAGE_ALT = "400";
 
 interface ImportTarget {
 	platform: SupportedPlatform;
@@ -298,27 +305,9 @@ export default class MultiSourceImporterPlugin extends Plugin {
 		};
 	}
 
-	getRelativePath(fromFolder: string, toPath: string): string {
-		const fromParts = this.normalizeVaultPath(fromFolder).split("/").filter(Boolean);
-		const toParts = this.normalizeVaultPath(toPath).split("/").filter(Boolean);
-
-		let shared = 0;
-		while (shared < fromParts.length && shared < toParts.length && fromParts[shared] === toParts[shared]) {
-			shared += 1;
-		}
-
-		const up = Array(Math.max(fromParts.length - shared, 0)).fill("..");
-		const down = toParts.slice(shared);
-		const relative = [...up, ...down];
-		return relative.length > 0 ? relative.join("/") : ".";
-	}
-
-	buildMediaLocation(folderPath: string, safeMediaTitle: string, useCustomFolder: boolean): { mediaFolder: string; relativeMediaPrefix: string } {
-		const baseFolder = this.normalizeVaultPath(this.settings.defaultFolder);
-		const mediaRootFolder = useCustomFolder ? (folderPath ? `${folderPath}/media` : "media") : baseFolder ? `${baseFolder}/media` : "media";
-		const mediaFolder = `${mediaRootFolder}/${safeMediaTitle}`;
-		const relativeMediaPrefix = this.getRelativePath(folderPath, mediaFolder);
-		return { mediaFolder, relativeMediaPrefix };
+	buildMediaLocation(folderPath: string): { mediaFolder: string; relativeMediaPrefix: string } {
+		const mediaFolder = folderPath ? `${folderPath}/${MEDIA_SUBFOLDER}` : MEDIA_SUBFOLDER;
+		return { mediaFolder, relativeMediaPrefix: MEDIA_SUBFOLDER };
 	}
 
 	extractImportTarget(input: string): ImportTarget | null {
@@ -427,8 +416,7 @@ export default class MultiSourceImporterPlugin extends Plugin {
 
 			let imageMap = new Map<string, string>();
 			const safeTitle = this.sanitizeFileName(article.title, "Untitled WeChat Article");
-			const safeMediaTitle = this.sanitizeMediaBaseName(article.title, "Untitled-WeChat-Article");
-			const { mediaFolder, relativeMediaPrefix } = this.buildMediaLocation(folderPath, safeMediaTitle, destination.useCustomFolder);
+			const { mediaFolder, relativeMediaPrefix } = this.buildMediaLocation(folderPath);
 
 			if (article.images.length > 0) {
 				if (downloadMedia) {
@@ -438,7 +426,6 @@ export default class MultiSourceImporterPlugin extends Plugin {
 				imageMap = await this.buildImageMap(article.images, {
 					downloadMedia,
 					mediaFolder,
-					safeMediaTitle,
 					relativeMediaPrefix,
 					headers: buildWechatHeaders(normalizedUrl),
 				});
@@ -446,10 +433,7 @@ export default class MultiSourceImporterPlugin extends Plugin {
 
 			article.contentMarkdown = this.wechatArticleService.convertHtmlToMarkdown(article.contentHtml, imageMap);
 
-			const normalizedCover = this.normalizeMediaUrl(article.cover);
-			const finalCover = normalizedCover ? (imageMap.get(normalizedCover) ?? normalizedCover) : "";
-
-			const frontmatter = this.wechatArticleService.buildFrontmatter(article, categoryName, finalCover);
+			const frontmatter = this.wechatArticleService.buildFrontmatter(article, categoryName);
 			const markdown = `${frontmatter}\n# ${article.title}\n\n${article.contentMarkdown}\n`;
 
 			const filePath = await this.getUniqueNotePath(folderPath, safeTitle);
@@ -510,7 +494,7 @@ export default class MultiSourceImporterPlugin extends Plugin {
 
 			const safeTitle = this.sanitizeFileName(note.title, "Untitled Xiaohongshu Note");
 			const safeMediaTitle = this.sanitizeMediaBaseName(note.title, "Untitled-XHS-Note");
-			const { mediaFolder, relativeMediaPrefix } = this.buildMediaLocation(folderPath, safeMediaTitle, destination.useCustomFolder);
+			const { mediaFolder, relativeMediaPrefix } = this.buildMediaLocation(folderPath);
 			const headers = this.buildXiaohongshuHeaders();
 
 			if (downloadMedia && (note.images.length > 0 || note.videoUrl)) {
@@ -520,7 +504,6 @@ export default class MultiSourceImporterPlugin extends Plugin {
 			const imageMap = await this.buildImageMap(note.images, {
 				downloadMedia,
 				mediaFolder,
-				safeMediaTitle,
 				relativeMediaPrefix,
 				headers,
 			});
@@ -529,8 +512,6 @@ export default class MultiSourceImporterPlugin extends Plugin {
 				const normalized = this.normalizeMediaUrl(img);
 				return imageMap.get(normalized) ?? imageMap.get(img) ?? normalized ?? img;
 			});
-			const normalizedCover = this.normalizeMediaUrl(note.cover);
-			const finalCover = normalizedCover ? (imageMap.get(normalizedCover) ?? normalizedCover) : "";
 
 			let videoMarkdown = "";
 			if (note.isVideo && note.videoUrl) {
@@ -554,7 +535,10 @@ export default class MultiSourceImporterPlugin extends Plugin {
 			if (videoMarkdown) {
 				markdownBody += videoMarkdown;
 			} else if (finalImages.length > 0) {
-				markdownBody += `![Cover Image](${this.toMarkdownDestination(finalImages[0])})\n\n`;
+				const gallery = finalImages
+					.map((img, index) => `![${index === 0 ? COVER_IMAGE_ALT : GALLERY_IMAGE_ALT}](${this.toMarkdownDestination(img)})`)
+					.join("");
+				markdownBody += `${gallery}\n\n`;
 			}
 
 			if (cleanContent) {
@@ -565,15 +549,7 @@ export default class MultiSourceImporterPlugin extends Plugin {
 				markdownBody += note.tags.map((tag) => `#${tag}`).join(" ") + "\n\n";
 			}
 
-			if (!note.isVideo && finalImages.length > 1) {
-				const restImages = finalImages
-					.slice(1)
-					.map((img) => `![Image](${this.toMarkdownDestination(img)})`)
-					.join("\n");
-				markdownBody += `${restImages}\n`;
-			}
-
-			const frontmatter = this.buildXhsFrontmatter(note, categoryName, finalCover);
+			const frontmatter = this.buildXhsFrontmatter(note, categoryName);
 			const markdown = `${frontmatter}\n# ${note.title}\n\n${this.normalizeMarkdownSpacing(markdownBody)}\n`;
 
 			const filePath = await this.getUniqueNotePath(folderPath, safeTitle);
@@ -739,7 +715,7 @@ export default class MultiSourceImporterPlugin extends Plugin {
 		new Notice(`平台 smoke 测试完成：成功 ${result.successCount}，失败 ${result.failedCount}。报告：${result.reportPath}`);
 	}
 
-	buildXhsFrontmatter(note: XhsNoteData, category: string, cover: string): string {
+	buildXhsFrontmatter(note: XhsNoteData, category: string): string {
 		const importedAt = this.formatDateTime(new Date());
 		const rows = [
 			"---",
@@ -748,7 +724,6 @@ export default class MultiSourceImporterPlugin extends Plugin {
 			`source: ${this.toYamlString(note.source)}`,
 			`category: ${this.toYamlString(category)}`,
 			`imported_at: ${this.toYamlString(importedAt)}`,
-			`cover: ${this.toYamlString(cover)}`,
 			`type: ${this.toYamlString(note.isVideo ? "video" : "note")}`,
 			"---",
 		];
@@ -760,13 +735,11 @@ export default class MultiSourceImporterPlugin extends Plugin {
 		options: {
 			downloadMedia: boolean;
 			mediaFolder: string;
-			safeMediaTitle: string;
 			relativeMediaPrefix: string;
 			headers?: Record<string, string>;
 		}
 	): Promise<Map<string, string>> {
 		const map = new Map<string, string>();
-		let index = 1;
 
 		for (const rawUrl of imageUrls) {
 			const normalized = this.normalizeMediaUrl(rawUrl);
@@ -780,14 +753,49 @@ export default class MultiSourceImporterPlugin extends Plugin {
 			}
 
 			const extension = this.guessImageExtension(normalized);
-			const baseName = `${options.safeMediaTitle}-${index}`;
-			const downloaded = await this.downloadMediaFile(normalized, options.mediaFolder, baseName, extension, options.headers);
+			const downloaded = await this.downloadImageByContentHash(normalized, options.mediaFolder, extension, options.headers);
 			const finalRef = downloaded.startsWith("http") ? downloaded : `${options.relativeMediaPrefix}/${downloaded}`;
 			map.set(normalized, finalRef);
-			index += 1;
 		}
 
 		return map;
+	}
+
+	async fetchBinary(url: string, headers?: Record<string, string>): Promise<ArrayBuffer> {
+		const response = await requestUrl({
+			url,
+			method: "GET",
+			headers: headers || {},
+			throw: false,
+		});
+
+		if (response.status >= 400) {
+			throw new Error(`HTTP ${response.status}`);
+		}
+
+		return response.arrayBuffer;
+	}
+
+	async downloadImageByContentHash(
+		url: string,
+		folderPath: string,
+		extension: string,
+		headers?: Record<string, string>
+	): Promise<string> {
+		try {
+			const data = await this.fetchBinary(url, headers);
+			const filename = `${mediaMd5Signature(data)}_MD5${extension}`;
+			const filePath = `${folderPath}/${filename}`;
+			if (!(await this.app.vault.adapter.exists(filePath))) {
+				await this.app.vault.adapter.writeBinary(filePath, data);
+			}
+			return filename;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.warn(`Failed to download media: ${url}`, error);
+			new Notice(`部分图片下载失败，已回退远程链接：${message}`);
+			return url;
+		}
 	}
 
 	async downloadMediaFile(
@@ -798,21 +806,9 @@ export default class MultiSourceImporterPlugin extends Plugin {
 		headers?: Record<string, string>
 	): Promise<string> {
 		try {
+			const data = await this.fetchBinary(url, headers);
 			const filename = await this.getUniqueMediaFilename(folderPath, baseName, extension);
-			const filePath = `${folderPath}/${filename}`;
-
-			const response = await requestUrl({
-				url,
-				method: "GET",
-				headers: headers || {},
-				throw: false,
-			});
-
-			if (response.status >= 400) {
-				throw new Error(`HTTP ${response.status}`);
-			}
-
-			await this.app.vault.adapter.writeBinary(filePath, response.arrayBuffer);
+			await this.app.vault.adapter.writeBinary(`${folderPath}/${filename}`, data);
 			return filename;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);

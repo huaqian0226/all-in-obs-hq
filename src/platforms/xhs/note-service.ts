@@ -163,7 +163,10 @@ export class XhsNoteService {
 			.trim();
 
 		const desc = Array.isArray(note?.desc) ? note.desc.join("\n") : note?.desc || "";
-		const decodedDesc = this.decodeJsEscapedString(String(desc)).replace(/\r/g, "").trim();
+		const decodedDesc = this.decodeJsEscapedString(String(desc))
+			.replace(/\r/g, "")
+			.replace(/\[话题\]/g, "")
+			.trim();
 		return decodedDesc || htmlText;
 	}
 
