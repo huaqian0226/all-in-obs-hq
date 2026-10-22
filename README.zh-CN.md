@@ -117,7 +117,7 @@
 - `manifest.json`
 - `styles.css`
 
-最简单的安装方式是直接从 [GitHub Releases](https://github.com/hztBUAA/all-in-obs/releases) 下载当前版本的这 3 个文件，然后放到上面的目录里。
+最简单的安装方式是直接从 [GitHub Releases](https://github.com/huaqian0226/all-in-obs-hq/releases) 下载当前版本的这 3 个文件，然后放到上面的目录里。
 
 如果你是从源码本地安装，可以执行：
 
@@ -161,7 +161,7 @@ ln -s "$(pwd)" "<你的Vault>/.obsidian/plugins/multi-source-content-importer"
 
 #### 排障与 Smoke
 
-- 命令面板可执行 `运行多平台实网 Smoke 测试`
+- 命令面板可执行 `运行多平台实网 smoke 测试`
 - 插件设置页支持一键运行 Smoke、打开报告、打开调试日志（统一多平台）
 - 插件设置页支持按行自定义微信/小红书 Smoke 用例
 - 报告输出：`.obsidian/plugins/multi-source-content-importer/smoke-report.json`
@@ -225,6 +225,7 @@ skill 里的 [scripts/import-content.mjs](skills/xhs-note-fetch/scripts/import-c
 - 解析：小红书的短链解析与正文、标签、图片提取直接复用插件；微信公众号的元数据与正文提取镜像 `src/platforms/wechat/*`。
 - 输出：与本 fork 的插件输出一致——笔记写入指定目录，图片保存在笔记所在目录的 `images/` 下并以内容 MD5 命名（`<md5>_MD5.<ext>`，相同图片自动去重），frontmatter 不含 `cover`，小红书笔记使用 `![404](...)![400](...)` 的图片排版，标签放在最后一行；视频笔记嵌入 `<video>`（视频文件同样保存在 `images/`），不下载笔记里不展示的图片。
 - 只取不写：加 `--print` 只返回提取结果的 JSON，不写任何文件。
+- 选项：`--via auto|standalone|obsidian` 选择抓取路线（默认 `auto`），`--vault` 或环境变量 `OBSIDIAN_VAULT` 指定 Vault，`--category` 覆盖 `category` 字段（默认取输出文件夹名），`--no-download-media` 保留远程链接，`--text` / `--input-file` 支持粘贴的分享文本。详见 `SKILL.md`。
 - 评论：小红书评论与回复通过 skill 里的 `scripts/xhs-bundle.sh`（ego-browser，需要已登录的浏览器）抓取，不属于插件导入，也不会写进笔记。
 
 这份 skill 在作者的中央技能库中维护，本仓库的 `skills/xhs-note-fetch/` 是它的镜像；插件的输出格式变化时需同步脚本，规则见 [AGENTS.md](AGENTS.md) 的 “Skills Alignment Rule”。

@@ -118,7 +118,7 @@ The folder must contain at least these 3 files:
 - `manifest.json`
 - `styles.css`
 
-The simplest way is to download these 3 files of the current version from [GitHub Releases](https://github.com/hztBUAA/all-in-obs/releases) and place them in the folder above.
+The simplest way is to download these 3 files of the current version from [GitHub Releases](https://github.com/huaqian0226/all-in-obs-hq/releases) and place them in the folder above.
 
 To install locally from source, run:
 
@@ -162,7 +162,7 @@ If any one of the following is true, the plugin has usually loaded correctly:
 
 #### Troubleshooting and Smoke Tests
 
-- Run `运行多平台实网 Smoke 测试` (run the multi-platform live-network smoke test) from the command palette
+- Run `运行多平台实网 smoke 测试` (run the multi-platform live-network smoke test) from the command palette
 - The plugin settings page can run the smoke test, open the report, and open the debug log (unified across platforms) with one click
 - The plugin settings page lets you customize WeChat/Xiaohongshu smoke cases, one per line
 - Report output: `.obsidian/plugins/multi-source-content-importer/smoke-report.json`
@@ -226,6 +226,7 @@ If you are not clicking through the Obsidian plugin UI by hand, but want an agen
 - Parsing: Xiaohongshu short-link resolution and extraction of body, tags, and images reuse the plugin directly; WeChat Official Account metadata and body extraction mirror `src/platforms/wechat/*`.
 - Output: consistent with this fork's plugin output — notes are written to the given folder, images are saved under `images/` next to the note and named by content MD5 (`<md5>_MD5.<ext>`, identical images are deduplicated), frontmatter has no `cover`, Xiaohongshu notes use the `![404](...)![400](...)` image layout with tags on the last line; video notes embed `<video>` (the video file is also saved under `images/`), and images that the note does not display are not downloaded.
 - Fetch only, no write: add `--print` to return only the extracted result as JSON, without writing any files.
+- Options: `--via auto|standalone|obsidian` picks the fetch route (default `auto`), `--vault` or the `OBSIDIAN_VAULT` environment variable forces a vault, `--category` overrides the `category` field (default: the output folder's name), `--no-download-media` keeps remote URLs, and `--text` / `--input-file` accept pasted share messages. See `SKILL.md` for details.
 - Comments: Xiaohongshu comments and replies are captured through `scripts/xhs-bundle.sh` in the skill (ego-browser, which needs a logged-in browser); this is not part of plugin import and the comments are not written into notes.
 
 This skill is maintained in the author's central skills library, and `skills/xhs-note-fetch/` in this repository is a mirror of it; when the plugin's output format changes, the script must be kept in sync, see the "Skills Alignment Rule" in [AGENTS.md](AGENTS.md).
