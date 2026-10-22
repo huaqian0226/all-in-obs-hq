@@ -5,7 +5,7 @@
 这个仓库主要服务两类使用方式：
 
 - 人类用户：在 Obsidian 里作为社区插件手动使用
-- Agent 用户：作为 skill 直接调用导入能力
+- Agent 用户：作为 skill（`xhs-note-fetch`）直接调用导入能力
 
 ## 目录
 
@@ -211,35 +211,47 @@ ls "<你的Vault>/.obsidian/plugins/multi-source-content-importer"
 
 #### 适用场景
 
-如果你不是手动点 Obsidian 插件 UI，而是希望让 agent 直接调用导入能力，请使用 skill 目录：
+如果你不是手动点 Obsidian 插件 UI，而是希望让 agent 直接导入微信公众号文章或小红书笔记，请使用 skill 目录：
 
-- [skills/obsidian-content-importer/SKILL.md](skills/obsidian-content-importer/SKILL.md)
+- [skills/xhs-note-fetch/SKILL.md](skills/xhs-note-fetch/SKILL.md)（沿用 `xhs-note-fetch` 这个名字，同时支持微信公众号与小红书）
+
+#### 对应的逻辑
+
+skill 里的 [scripts/import-content.mjs](skills/xhs-note-fetch/scripts/import-content.mjs) 是本插件抓取与输出逻辑的独立镜像：
+
+- 抓取：微信公众号默认先用 Node 原生 `fetch` 独立抓取（没有任何依赖、不需要打开 Obsidian），失败再通过 `obsidian` 命令行调用正在运行的本插件；小红书会把非浏览器请求重定向到登录页，所以只通过本插件抓取：脚本自动找一个已打开且加载了本插件的 Vault，Vault 名可用 `--vault` 指定。两条路线的输出相同。
+- 解析：小红书的短链解析与正文、标签、图片提取直接复用插件；微信公众号的元数据与正文提取镜像 `src/platforms/wechat/*`。
+- 输出：与本 fork 的插件输出一致——笔记写入指定目录，图片保存在笔记所在目录的 `images/` 下并以内容 MD5 命名（`<md5>_MD5.<ext>`，相同图片自动去重），frontmatter 不含 `cover`，小红书笔记使用 `![404](...)![400](...)` 的图片排版，标签放在最后一行；视频笔记嵌入 `<video>`（视频文件同样保存在 `images/`），不下载笔记里不展示的图片。
+- 只取不写：加 `--print` 只返回提取结果的 JSON，不写任何文件。
+- 评论：小红书评论与回复通过 skill 里的 `scripts/xhs-bundle.sh`（ego-browser，需要已登录的浏览器）抓取，不属于插件导入，也不会写进笔记。
+
+这份 skill 在作者的中央技能库中维护，本仓库的 `skills/xhs-note-fetch/` 是它的镜像；插件的输出格式变化时需同步脚本，规则见 [AGENTS.md](AGENTS.md) 的 “Skills Alignment Rule”。
 
 #### 安装位置
 
 推荐安装到：
 
-- `~/.codex/skills/obsidian-content-importer/`
-- `~/.claude/skills/obsidian-content-importer/`
+- `~/.codex/skills/xhs-note-fetch/`
+- `~/.claude/skills/xhs-note-fetch/`
 
 安装时必须复制整个目录，而不是只复制 `SKILL.md`，因为脚本也在里面：
 
 - `SKILL.md`
-- `scripts/import-content.mjs`
+- `scripts/`（`import-content.mjs`、`xhs-fetch.mjs`、`xhs-bundle.mjs`、`xhs-bundle.sh`）
 
 示例：
 
 ```bash
 mkdir -p ~/.codex/skills ~/.claude/skills
-cp -R skills/obsidian-content-importer ~/.codex/skills/
-cp -R skills/obsidian-content-importer ~/.claude/skills/
+cp -R skills/xhs-note-fetch ~/.codex/skills/
+cp -R skills/xhs-note-fetch ~/.claude/skills/
 ```
 
 #### 安装后自检
 
 ```bash
-node ~/.codex/skills/obsidian-content-importer/scripts/import-content.mjs --help
-node ~/.claude/skills/obsidian-content-importer/scripts/import-content.mjs --help
+node ~/.codex/skills/xhs-note-fetch/scripts/import-content.mjs --help
+node ~/.claude/skills/xhs-note-fetch/scripts/import-content.mjs --help
 ```
 
 ## 开发与发布
@@ -303,6 +315,11 @@ npx tsc --noEmit
 
 ## Changelog
 
+### 未发布（fork 定制）
+
+- 微信公众号导入不再下载封面图：笔记已不写 `cover`，下载封面只会在 `images/` 留下无人引用的文件
+- 小红书视频笔记不再下载笔记里不展示的图片（视频笔记渲染的是视频，不是图片排版）
+
 ### 0.1.10-hq.1（fork 定制）
 
 本 fork（`my-features` 分支）在上游 0.1.10 基础上定制笔记输出格式：
@@ -313,7 +330,7 @@ npx tsc --noEmit
 - 小红书笔记版式调整：封面 `![404](...)` 与其余图片 `![400](...)` 连续排列、紧跟标题，
   之后是正文，最后一行是标签（alt 文本即 Obsidian 显示宽度）
 - 清理小红书标签及正文中的 `[话题]` 后缀，输出纯净标签（如 `#AI工具`）
-- 注意：`skills/` 下的 agent 脚本仍为上游输出格式，尚未同步本定制
+- agent skill 已迁移为 `skills/xhs-note-fetch/`，其导入脚本的输出格式与本定制保持一致（见上文“Agent 用户：作为 Skill 使用”）
 
 ### 0.1.10
 

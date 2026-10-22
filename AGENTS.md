@@ -66,8 +66,9 @@ This repository uses a reproducible fix loop for Xiaohongshu and WeChat import i
 
 ## Skills Alignment Rule
 
-`skills/obsidian-content-importer/scripts/import-content.mjs` must preserve the same XHS shortlink decision chain as plugin services.
-When plugin XHS resolver behavior changes, update skills script in the same PR.
+`skills/xhs-note-fetch/` is a mirror of the skill that the maintainer keeps in their central skill library; the library copy is the one to edit, and this directory is re-synced from it.
+Its `scripts/import-content.mjs` mirrors the plugin's WeChat extraction and its note output format (`images/<md5>_MD5.<ext>`, no `cover`, XHS gallery layout, video notes). Xiaohongshu is read only through the plugin itself, so it needs no separate mirror.
+When plugin WeChat extraction or output behavior changes, update the skill script in the library and re-sync this copy in the same PR, and update `skills/xhs-note-fetch/SKILL.md` if the documented behavior changes.
 
 ## Pre-Release Checklist
 
