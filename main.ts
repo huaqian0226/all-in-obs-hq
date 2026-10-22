@@ -501,12 +501,17 @@ export default class MultiSourceImporterPlugin extends Plugin {
 				await this.ensureFolder(mediaFolder);
 			}
 
-			const imageMap = await this.buildImageMap(note.images, {
-				downloadMedia,
-				mediaFolder,
-				relativeMediaPrefix,
-				headers,
-			});
+			// A video note renders the video instead of the image gallery, so its images would be
+			// downloaded without ever being referenced.
+			const rendersVideo = note.isVideo && !!note.videoUrl;
+			const imageMap = rendersVideo
+				? new Map<string, string>()
+				: await this.buildImageMap(note.images, {
+						downloadMedia,
+						mediaFolder,
+						relativeMediaPrefix,
+						headers,
+					});
 
 			const finalImages = note.images.map((img) => {
 				const normalized = this.normalizeMediaUrl(img);

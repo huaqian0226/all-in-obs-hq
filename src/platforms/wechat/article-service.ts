@@ -105,7 +105,7 @@ export class WechatArticleService {
 		}
 		contentHtml = this.cleanContentHtml(contentHtml);
 
-		const images = this.extractImageUrlsFromContent(contentHtml, cover);
+		const images = this.extractImageUrlsFromContent(contentHtml);
 
 		return {
 			title: this.cleanText(title),
@@ -316,12 +316,10 @@ export class WechatArticleService {
 		}
 	}
 
-	private extractImageUrlsFromContent(contentHtml: string, coverUrl: string): string[] {
+	// Only images that appear in the article body. The cover is not written to the note (no `cover`
+	// frontmatter field), so downloading it would leave an unreferenced file in images/.
+	private extractImageUrlsFromContent(contentHtml: string): string[] {
 		const urls = new Set<string>();
-		const cover = this.normalizeMediaUrl(coverUrl);
-		if (cover) {
-			urls.add(cover);
-		}
 
 		if (!contentHtml) {
 			return Array.from(urls);
